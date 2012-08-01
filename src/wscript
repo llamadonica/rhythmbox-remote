@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+
+def build(bld):
+    bld.env.append_value('VALAFLAGS', ['-g', '--save-temps', '--define=DEBUG'])
+    bld(  rule='cd src && ${VALA_DBUS_BINDING_TOOL} --gdbus --api-path=../${SRC} && cd ..', 
+          source='interface/org.mpris.MediaPlayer2.rhythmbox.xml', 
+          target='org-mpris.vala',
+          name  ='vala-dbus-binding-tool' )
+          
+    bld(  features  = 'c cprogram',
+          cflags    = ['-g3', '-ggdb3', '-O0', '-I' + bld.path.abspath()],
+          # threading = True,
+          vapi_dirs = ['.'],
+          name = 'dbus-introspect.program',
+          uselib = ['GIO','DBUS'],
+          target = 'unified-remote',
+          vala_target_glib = '2.32',
+          source = 'thread_helper.c rhythmbox_remote.vala org-mpris.vala',
+          packages = ['gio-2.0','posix','thread_helper'] )

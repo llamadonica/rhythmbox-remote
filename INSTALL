@@ -1,0 +1,26 @@
+Requirements
+=======================
+
+dbus-introspect uses the following libraries and utilities:
+
+    valac (>=0.12)
+    gcc   (>=4.2)
+    gio-2.0
+    
+You must install dev-packages for these libraries to build dbus-introspect.
+
+
+Building
+=======================
+
+Pino uses a WAF build system. To build and install dbus-introspect use this commands:
+
+    ./waf configure --prefix=/usr
+    ./waf build
+    sudo ./waf install
+
+For uninstalling type this:
+
+    sudo ./waf uninstall
+
+Visit http://code.google.com/p/waf/ for more information.
