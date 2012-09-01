@@ -94,11 +94,6 @@ public class SignalRouter : Object
 			error ("Could not connect to DBus");
 		}
 		
-		org.PulseAudio.ServerLookup1 pulse_audio_server = 
-			Bus.get_proxy_sync (BusType.SESSION, "org.pulseaudio.Server", "/org/pulseaudio/server_lookup1");
-		var pulseaudio_dbus_address = pulse_audio_server.address;
-		Main.debug("%s %s\n", "PulseAudio bus is at", pulseaudio_dbus_address );
-		
 		this.pa_main_loop = new PulseAudio.GLibMainLoop (context);
 		this.pa_main_loop_api = pa_main_loop.get_api();
 		
