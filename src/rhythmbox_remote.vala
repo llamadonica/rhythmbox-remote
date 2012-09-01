@@ -30,194 +30,345 @@
 
 using GLib;
 
+const int64  SEEK_AMOUNT  = 4000000;
 
 public class Main : GLib.Object 
 {
-	static List<Lircable> queue_to_check;
-	static LircDispatcher dispatcher;
-
-	static void touch(GLib.Object object) {
-		return; 
+    static const bool   DEBUG        = false;
+    public static const string PROGRAM_NAME = "universal-remote";
+    [PrintfFormat]
+	public static void debug(string format, ...) {
+		if (Main.DEBUG) {
+			var l      = va_list();
+			var output = format.vprintf(l);
+			stderr.printf("%s: %s",Main.PROGRAM_NAME,output);
+		}
 	}
-
 	static int main (string[] args) {	
-		if (!Thread.supported()) {
-        	error ("Cannot run without threads.\n");
-        	return 1;
-    	}
-    	var loop                       = new MainLoop();
-    	var startup                    = new IdleSource();
-    	var listener_may_exit_self     = new Mutex();
-    	var listener                   = new LircListener(loop.get_context(),listener_may_exit_self);
+		
+		var context = new Lirc.Context (PROGRAM_NAME, true);
+		Lirc.Listener listener;
+		SignalRouter  router;
+		var loop     = new MainLoop();
+		try
+		{ 
+			listener = new Lirc.Listener (context, loop.get_context());
+			router   = new SignalRouter (loop.get_context());
+		}
+		catch (IOError e)
+		{
+			Main.debug("Error: %s\n", e.message);
+			return 1;
+		}
+		
+		listener.button.connect(router.handle_lirc_button);
+		listener.died.connect(loop.quit);
+		
+		loop.run();
     	
-    	startup.set_callback(() => 
-    		{
-    			stdout.printf("Starting main loop.\n");
-		    	dispatcher                 = new LircDispatcher(listener);
-    			ThreadHelper.Thread<bool> listener_thread = 
-    				new ThreadHelper.Thread<bool>("listener",listener.lirc_main_loop);
-    
-    			var exiter = new Exiter(listener_thread.to_gthread(), loop,listener_may_exit_self);
- 
-    			int[] responses = { Posix.SIGINT, Posix.SIGTERM, Posix.SIGHUP} ;
-    			foreach (var signal_code in responses) 
-    			{
-    				var signal_handler = new Unix.SignalSource(signal_code);
-    				signal_handler.set_callback( exiter.on_exit_delegate ) ;
-    				signal_handler.attach(loop.get_context());
-    			}
-    			
-    			stdout.printf("Processing signals.\n");
-    			return false;
-    		});
-    	
-    	
-    	
-    	startup.attach(loop.get_context());
-    	
-    	loop.run();
-    	
-    	touch(listener);
     	return 0;
 	}
-	static void prepare_interfaces() {
-		stdout.printf("Preparing interfaces\n");
-	}
-	static void handle_message(RemoteCommand command, LircDispatcher e) {
-		stdout.printf("Handling message %s\n", command.to_string());
-	}
-}
+}   
 
-public class Exiter : GLib.Object
-{
-    private unowned Thread<bool> listener_thread;
-    private MainLoop loop;
-    private unowned Mutex listener_may_exit_self;
-    public Exiter(Thread<bool> listener_thread, MainLoop loop, Mutex listener_may_exit_self) 
-    { 
-   		this.listener_thread = listener_thread;
-   		this.loop            = loop;
-   		this.listener_may_exit_self =
-   							   listener_may_exit_self;
-   	}
-   	public bool on_exit_delegate()	
-   	{
-   		// If the listener thread takes the lock, then it must exit.
-   		if (listener_may_exit_self.trylock()) 
-	    	listener_thread.exit(true);
-    	
-    	loop.quit(); 
-    	return false;
-    }
-} 
-   
+public delegate void Func ();
 
-// The main listener thread for LIRC
-public class LircListener : GLib.Object
+public class SignalRouter : Object
 {
-	private unowned MainContext context;
-	private unowned Mutex listener_may_exit_self;
-	// | signalled after a new button is pressed.
-	public signal void lirc_button_raw(RemoteCommand command, int index);
-	// | causes the thread to enter its main loop wherein
-	// it listens for messages along the
-	public bool lirc_main_loop() {
-		stdout.printf("Entering main LIRC Loop.\n");
+	const   int64                         ADJUSTMENT_INCREMENT = 12800;
+	private org.mpris.MediaPlayer2Player? rhythmbox_remote = null; //null if not connected;
+	private org.freedesktop.DBus          dbus_connection;
+	private PulseAudio.Context            pulse_audio_context;
+	private Button                        pending_press;
+	private TimeoutSource?                timeout_source;
+	private MainContext                   glib_context;  
+	private PulseAudio.GLibMainLoop       pa_main_loop;
+	private PulseAudio.MainLoopApi        pa_main_loop_api;   
+	private int64                         adjustment;
 		
-		this.lirc_button_raw(RemoteCommand.PLAYPAUSE, 0); 
+	public SignalRouter(MainContext context) throws Error
+	{	
+		this.glib_context = context;
+		this.dbus_connection  = Bus.get_proxy_sync (BusType.SESSION, "org.freedesktop.DBus", "/org/freedesktop/DBus");
+		if (this.dbus_connection == null)
+		{
+			error ("Could not connect to DBus");
+		}
 		
-		stdout.printf("Exiting main LIRC Loop.\n");
+		org.PulseAudio.ServerLookup1 pulse_audio_server = 
+			Bus.get_proxy_sync (BusType.SESSION, "org.pulseaudio.Server", "/org/pulseaudio/server_lookup1");
+		var pulseaudio_dbus_address = pulse_audio_server.address;
+		Main.debug("%s %s\n", "PulseAudio bus is at", pulseaudio_dbus_address );
 		
-		// End the loop.
-		this.listener_may_exit_self.lock() ;
+		this.pa_main_loop = new PulseAudio.GLibMainLoop (context);
+		this.pa_main_loop_api = pa_main_loop.get_api();
+		
+		this.pulse_audio_context = new PulseAudio.Context (pa_main_loop_api, Main.PROGRAM_NAME);
+		this.pulse_audio_context.set_state_callback ((con_inner) =>
+			{
+				PulseAudio.Context.State state = con_inner.get_state();
+				Main.debug( "PulseAudio changed state to %s.\n", state.to_string());
+				switch (state) {
+					case PulseAudio.Context.State.READY: 
+						Main.debug( "Reached ready signal.\n" );
+						break;
+					default: break;
+				}
+			});
+		
+		Main.debug ("%s\n", this.pulse_audio_context.get_state().to_string());
+		
+		if (this.dbus_connection.name_has_owner ("org.gnome.Rhythmbox3"))
+		{
+			this.rhythmbox_remote = Bus.get_proxy_sync (BusType.SESSION, "org.gnome.Rhythmbox3", "/org/mpris/MediaPlayer2");
+			Main.debug ("%s\n", "SignalRouter connected to org.gnome.Rhythmbox3");
+			return;
+		}
+		
+		this.dbus_connection.name_owner_changed.connect ((name, old_owner, new_owner) =>
+			{
+				if (name != "org.gnome.Rhythmbox3")
+					return;
+				if (new_owner != "")
+				{
+					this.rhythmbox_remote = Bus.get_proxy_sync (BusType.SESSION, "org.gnome.Rhythmbox3", "/org/mpris/MediaPlayer2");
+					Main.debug ("%s\n", "SignalRouter connected to org.gnome.Rhythmbox3");
+					return;
+				}
+				if (old_owner != "" && new_owner == "")
+				{
+					this.rhythmbox_remote = null;
+					Main.debug ("%s\n", "SignalRouter disconnected from org.gnome.Rhythmbox3");
+					return;
+				}
+			});
+		var delayed_pa_source = new IdleSource();
+		delayed_pa_source.set_callback(() =>
+			{ 
+				Main.debug ("%s\n",this.pulse_audio_context .get_state().to_string());
+				if (this.pulse_audio_context.get_state() == PulseAudio.Context.State.UNCONNECTED
+					&& this.pulse_audio_context.connect() < 0)
+				{	
+					Main.debug ("Error while connecting to PulseAudio server.");
+				}
+				return false;
+			});
+		delayed_pa_source.attach(context);
+	}
+	
+	private bool handle_pending ()
+	{
+		var this_press = this.pending_press;
+		if (this.pending_press == Button.NONE)
+			return false;
+		this.pending_press = Button.NONE;
+		handle_lirc_command (this_press);
 		return false;
 	}
-	public LircListener(MainContext context, Mutex listener_may_exit_self) {
-		context                     = context;
-		this.listener_may_exit_self = listener_may_exit_self;
-		stdout.printf("Creating listener.\n");
-	}
-}
-
-public class LircDispatcher : GLib.Object
-{
-	public  int timeout              { get; set ; default = 20; }
-	public  int length_of_long_press { get; set ; default = 1000; }
-	private int time_at_start_of_cycle                = 0;
-	private RemoteCommand current_command             = 0;
-	private int           next_expected_interval_code = 0;
-	private int           length_of_current_press     = 0;
-	private LircListener listener ;
-	public LircDispatcher( LircListener listener ) 
+	
+	private void adjust_volume(PulseAudio.Context context_inner, PulseAudio.SinkInfo? sink_info, int eol) 
 	{
-		base();
-		this.listener = listener ;
-		stdout.printf("Creating dispatcher\n");
-		listener.lirc_button_raw.connect((e, command, index) => 
+		PulseAudio.CVolume cVolume;
+		if (eol!=0) return;
+		lock(this.adjustment) {
+			if (this.adjustment > (int64) uint32.MAX) {
+				this.adjustment = (int64) uint32.MAX;
+			}
+			if (this.adjustment < -((int64) uint32.MAX)) {
+				this.adjustment = - (int64) uint32.MAX;
+			}
+			if (this.adjustment < 0) 
 			{
-				stdout.printf("Received raw message %s %i\n",command.to_string(), index);
-				bool send_previous = true;
-			});
+				cVolume = sink_info.volume.dec ((uint32)(-this.adjustment));
+			}
+			else
+			{
+				cVolume = sink_info.volume.inc ((uint32) this.adjustment);
+			}
+			this.adjustment = 0;
+		}
+		
+		if (cVolume.max() > PulseAudio.Volume.NORM)
+		{
+			cVolume = cVolume.dec (cVolume.max() - PulseAudio.Volume.NORM);
+		}
+		if (cVolume.min() < PulseAudio.Volume.MUTED)
+		{
+			cVolume = cVolume.inc (PulseAudio.Volume.MUTED - cVolume.min());
+		}
+							
+		context_inner.set_sink_volume_by_index (sink_info.index, cVolume);							
 	}
-	private void send_old_message() {
+	
+	private void handle_lirc_command (Button button)
+	{
+		
+		Main.debug ("%s %s\n", "Received true signal:", button.to_string());
+		int64 seek_amount = SEEK_AMOUNT;
+		PulseAudio.Volume increment = 10;
+		
+		switch (button)
+		{
+			case Button.PLAY_PAUSE:
+				if (this.rhythmbox_remote != null)
+				{
+					this.rhythmbox_remote.play_pause(); 
+					// FIXME: This should do something reasonable if
+					// nothing can be played.
+				}
+				break;
+			case Button.STOP:
+				if (this.rhythmbox_remote != null)
+				{
+					this.rhythmbox_remote.stop();
+				}
+				break;
+			case Button.SEEK_F:
+				if (this.rhythmbox_remote != null)
+				{
+					this.rhythmbox_remote.next() ;
+				}
+				break;
+			case Button.SEEK_R:
+				if (this.rhythmbox_remote != null)
+				{
+					this.rhythmbox_remote.previous() ;
+				}
+				break;
+			case Button.SCAN_R:
+				seek_amount = -seek_amount;
+				if (this.rhythmbox_remote != null)
+				{
+					this.rhythmbox_remote.seek (seek_amount) ;
+				}
+				break;
+			case Button.SCAN_F:
+				if (this.rhythmbox_remote != null)
+				{
+					this.rhythmbox_remote.seek (seek_amount) ;
+				}
+				break;
+			case Button.VOL_DOWN:
+			case Button.VOL_DOWN_C:
+				lock(this.adjustment) {
+					this.adjustment -= this.ADJUSTMENT_INCREMENT;
+				}
+				Main.debug ("%s\n", this.pulse_audio_context.get_state().to_string());
+				var op = this.pulse_audio_context.get_sink_info_list (this.adjust_volume);
+				if (op == null)
+				{
+					Main.debug ("Couldn't increase volume.\n");
+				}
+				break;
+			case Button.VOL_UP:
+			case Button.VOL_UP_C:
+				lock(this.adjustment) {
+					this.adjustment += this.ADJUSTMENT_INCREMENT;
+				}
+				Main.debug ("%s\n", this.pulse_audio_context.get_state().to_string());
+				var op = this.pulse_audio_context.get_sink_info_list (this.adjust_volume);
+				if (op == null)
+				{
+					Main.debug ("Couldn't increase volume.\n");
+				}
+				break;
+			default:
+				break; //Nothing;
+		}
 	}
-	public signal void prepare_interfaces() ;
-	public signal void send_button(RemoteCommand command) ; 
-	public void to_here() {
-		return;
+
+	public void handle_lirc_button (string device_conf, string interpreted_key_code, uint8 repetition_number) 
+	{   /* Now the fun part:
+		 * 
+		 * When a user presses a button once, there has to be a little
+		 * lag to determine whether the user pressed the button multiple
+		 * times or just once.
+		 * 
+		 * The system emits about 8.7 button presses per second. 4 consecutive
+		 * button presses in under 0.57 seconds is reasonable
+		 * to believe that the user intended to hold the button.
+		 * 
+		 * So here's what happens:
+		 * 	 When the user hits the button for the first time (repetition_number=0): 
+		 *     any pending timeouts are cancelled and executed early.
+		 *     a new timeout is created for 0.3 seconds in the future with the default action for one press.
+		 *   When a user hits a button the 4th time (repetition_number=3):
+		 *     the pending timeout is cancelled.
+		 *     the action for repeated action is executed.
+		 *   Thereafter, every 3 times (repetition_number % 3 = 0)
+		 *     the action for repeated action is executed.
+		 */
+		if (repetition_number == 0 || repetition_number == 3)
+		{
+			if (this.timeout_source != null)
+			{
+				this.timeout_source.destroy();
+			}
+			if (repetition_number == 0)
+			{
+				if (this.pending_press != Button.NONE)
+				{
+					this.handle_pending();
+				}
+				
+				this.timeout_source = new TimeoutSource (400);
+				
+				switch (interpreted_key_code) {
+					case "KEY_VOLUMEDOWN":
+						this.pending_press = Button.VOL_DOWN_C; break;
+					case "KEY_VOLUMEUP":
+						this.pending_press = Button.VOL_UP_C; break;
+					case "KEY_NEXT":
+						this.pending_press = Button.SEEK_F; break;
+					case "KEY_PREVIOUS":
+						this.pending_press = Button.SEEK_R; break;
+					case "KEY_PLAYPAUSE":
+						this.pending_press = Button.PLAY_PAUSE; break;
+					case "KEY_MENU":
+						handle_lirc_command (Button.MENU); return;
+					default:
+						return;
+				}
+				
+				this.timeout_source.set_callback (this.handle_pending) ;
+				this.timeout_source.attach (this.glib_context);
+				return;
+			}
+			
+			if (interpreted_key_code == "KEY_PLAYPAUSE")
+			{	// This is only handled once, but at signal 3
+				handle_lirc_command (Button.STOP); return;
+			}
+		}
+		if ((repetition_number % 3) == 0)
+		{
+			switch (interpreted_key_code) {
+				case "KEY_VOLUMEDOWN":
+					handle_lirc_command (Button.VOL_DOWN); return;
+				case "KEY_VOLUMEUP":
+					handle_lirc_command (Button.VOL_UP); return;
+				case "KEY_NEXT":
+					handle_lirc_command (Button.SCAN_F); return;
+				case "KEY_PREVIOUS":
+					handle_lirc_command (Button.SCAN_R); return;
+				default:
+						return;
+			}
+		}
 	}
 }
 
-public enum RemoteCommand
+enum Button 
 {
-	PLAYPAUSE,
-	SEEKF,
-	SEEKB,
-	SKIPF,
-	SKIPB,
-	VOLU,
-	VOLD,
+	NONE,
+	PLAY_PAUSE,
+	STOP,
+	VOL_DOWN,
+	VOL_UP,
+	VOL_DOWN_C,
+	VOL_UP_C,
 	MENU,
-	STOP
+	SEEK_F,
+	SEEK_R,
+	SCAN_F,
+	SCAN_R
 }
-
-/*
- *  A Lircable object is one that can handle lirc commands.
- */
-public interface Lircable : GLib.Object 
-{
-	/* Returns a negative number indicating the Lircable object in question's
-	 * priority to run a specified command.
-	 *
-	 * A response of 0 means that the command cannot be run.
-	 * Any other result means that the command can be run. unified_remote will examine
-	 * all results before deciding which one to use, and the highest
-	 * priority only will be run.
-	 */
-	public abstract int get_priority_adjustment(RemoteCommand command);
-	/* Handle the specified command.
-	 */
-	public abstract void handle_lirc_signal(RemoteCommand command) throws DBusError, IOError;
-	/* Ensure that the program referenced is quiet, for the benefit of other
-	 * programs.
-	 */
-	public abstract void make_quiet() throws DBusError, IOError;
-}
-
-/* priority  P S S   M S
- * of        L E K V E T
- * command   A E I O N O
- *           Y K P L U P
- *
- * rhythmbox (or mpris flavored player) 
- *   playing 2*1 2 2 - 1?
- *   raised  1 - 1 1 - -
- *   lowered - - - 1 - -
- * totem            
- *   playing 2*1 2 2 2 1
- *   raised  1 - 1 1 - -
- *   lowered - - - 1 - -
- * menusys
- *   raised  3 2 3 3 3 2
- *   lowered - - - 2 1
- */

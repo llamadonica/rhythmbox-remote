@@ -1,19 +1,22 @@
 #!/usr/bin/env python
 
 def build(bld):
-    bld.env.append_value('VALAFLAGS', ['-g', '--save-temps', '--define=DEBUG'])
+    bld.env.append_value('VALAFLAGS', ['--save-temps'])
     bld(  rule='cd src && ${VALA_DBUS_BINDING_TOOL} --gdbus --api-path=../${SRC} && cd ..', 
           source='interface/org.mpris.MediaPlayer2.rhythmbox.xml', 
           target='org-mpris.vala',
           name  ='vala-dbus-binding-tool' )
-          
+    bld(  rule='cd src && ${VALA_DBUS_BINDING_TOOL} --gdbus --api-path=../${SRC} && cd ..', 
+          source='interface/org.freedesktop.DBus.xml', 
+          target='org-freedesktop.vala',
+          name  ='vala-dbus-binding-tool' ) 
     bld(  features  = 'c cprogram',
-          cflags    = ['-g3', '-ggdb3', '-O0', '-I' + bld.path.abspath()],
+          cflags    = [ '-g', '-ggdb3', '-O0', '-I' + bld.path.abspath()],
           # threading = True,
           vapi_dirs = ['.'],
           name = 'dbus-introspect.program',
-          uselib = ['GIO','DBUS'],
+          uselib = ['GIO','DBUS','GIO_UNIX','PULSE','PULSE_GLIB'],
           target = 'unified-remote',
           vala_target_glib = '2.32',
-          source = 'thread_helper.c rhythmbox_remote.vala org-mpris.vala',
-          packages = ['gio-2.0','posix','thread_helper'] )
+          source = 'org-mpris.vala org-freedesktop.vala org-pulseaudio.vala lirc.vala rhythmbox_remote.vala',
+          packages = ['gio-2.0','posix','gio-unix-2.0','libpulse','libpulse-mainloop-glib'] )

@@ -27,7 +27,13 @@ def configure(conf):
             atleast_version='2.14.0', mandatory=True, args='--cflags --libs')
     conf.check_cfg(package='gio-2.0', uselib_store='GIO',
             atleast_version='2.10.0', mandatory=True, args='--cflags --libs')
-
+    conf.check_cfg(package='gio-unix-2.0', uselib_store='GIO_UNIX',
+            mandatory=True, args='--cflags --libs')
+    conf.check_cfg(package='libpulse', uselib_store='PULSE',
+            mandatory=True, args='--cflags --libs')
+    conf.check_cfg(package='libpulse-mainloop-glib', uselib_store='PULSE_GLIB',
+            mandatory=True, args='--cflags --libs')
+    
     conf.define('PACKAGE', APPNAME)
     conf.define('PACKAGE_NAME', APPNAME)
     conf.define('PACKAGE_STRING', APPNAME + '-' + VERSION)
