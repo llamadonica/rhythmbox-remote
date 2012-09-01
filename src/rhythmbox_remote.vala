@@ -34,7 +34,7 @@ const int64  SEEK_AMOUNT  = 4000000;
 
 public class Main : GLib.Object 
 {
-    static const bool   DEBUG        = false;
+    static const bool   DEBUG        = true;
     public static const string PROGRAM_NAME = "universal-remote";
     [PrintfFormat]
 	public static void debug(string format, ...) {
@@ -116,7 +116,6 @@ public class SignalRouter : Object
 		{
 			this.rhythmbox_remote = Bus.get_proxy_sync (BusType.SESSION, "org.gnome.Rhythmbox3", "/org/mpris/MediaPlayer2");
 			Main.debug ("%s\n", "SignalRouter connected to org.gnome.Rhythmbox3");
-			return;
 		}
 		
 		this.dbus_connection.name_owner_changed.connect ((name, old_owner, new_owner) =>
