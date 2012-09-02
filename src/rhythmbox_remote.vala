@@ -34,7 +34,7 @@ const int64  SEEK_AMOUNT  = 4000000;
 
 public class Main : GLib.Object 
 {
-    static const bool   DEBUG        = true;
+    static const bool   DEBUG        = false;
     public static const string PROGRAM_NAME = "universal-remote";
     [PrintfFormat]
 	public static void debug(string format, ...) {
