@@ -14,7 +14,7 @@ AM_CFLAGS =\
 	 -Wall\
 	 -g
 
-bin_PROGRAMS = rhythmbox_remote
+bin_PROGRAMS = rhythmbox-remote
 
 rhythmbox_remote_SOURCES = \
 	rhythmbox_remote.vala config.vapi thread_helper.c lirc.vala org-freedesktop.vala org-mpris.vala

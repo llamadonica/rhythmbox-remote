@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 dnl Created by Anjuta application wizard.
 
-AC_INIT(rhythmbox_remote, 0.6)
+AC_INIT(rhythmbox-remote, 0.6)
 
 AC_CONFIG_HEADERS([config.h])
 
