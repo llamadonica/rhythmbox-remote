@@ -1,0 +1,16 @@
+Source: rhythmbox-remote
+Section: misc
+Priority: extra
+Maintainer: 2012-2013 Adam Stark <llamadonica@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, libglib2.0-dev, libdbus-1-dev, libpulse-dev
+Standards-Version: 3.9.4
+Homepage: 2012-2013 Adam Stark <llamadonica@gmail.com>
+Vcs-Git: https://github.com/llamadonica/rhythmbox-remote.git
+Vcs-Browser: https://github.com/llamadonica/rhythmbox-remote
+
+Package: rhythmbox-remote
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, rhythmbox
+Description: A simple remote to control rhythmbox from a MacMini remote
+ A remote control that lets you skip, scan, pause and play, and control
+ the volume from the remote control that comes with the MacMini
