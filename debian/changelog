@@ -1,3 +1,9 @@
+rhythmbox-remote (0.6.0-1~raring2) raring; urgency=low
+
+  * Fixed packaging dependencies
+
+ -- Adam Stark (home) <llamadonica@gmail.com>  Wed, 02 Oct 2013 22:10:45 -0700
+
 rhythmbox-remote (0.6.0-1~raring1) raring; urgency=low
 
   * Initial release

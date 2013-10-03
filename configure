@@ -3677,21 +3677,12 @@ if test -n "$RHYTHMBOX_REMOTE_CFLAGS"; then
     pkg_cv_RHYTHMBOX_REMOTE_CFLAGS="$RHYTHMBOX_REMOTE_CFLAGS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0") 2>&5
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0") 2>&5
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_RHYTHMBOX_REMOTE_CFLAGS=`$PKG_CONFIG --cflags "libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0" 2>/dev/null`
+  pkg_cv_RHYTHMBOX_REMOTE_CFLAGS=`$PKG_CONFIG --cflags "libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -3703,21 +3694,12 @@ if test -n "$RHYTHMBOX_REMOTE_LIBS"; then
     pkg_cv_RHYTHMBOX_REMOTE_LIBS="$RHYTHMBOX_REMOTE_LIBS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0") 2>&5
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0") 2>&5
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_RHYTHMBOX_REMOTE_LIBS=`$PKG_CONFIG --libs "libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0" 2>/dev/null`
+  pkg_cv_RHYTHMBOX_REMOTE_LIBS=`$PKG_CONFIG --libs "libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -3738,23 +3720,14 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        RHYTHMBOX_REMOTE_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0" 2>&1`
+	        RHYTHMBOX_REMOTE_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0" 2>&1`
         else
-	        RHYTHMBOX_REMOTE_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0" 2>&1`
+	        RHYTHMBOX_REMOTE_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0" 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$RHYTHMBOX_REMOTE_PKG_ERRORS" >&5
 
-	as_fn_error $? "Package requirements (libpulse
-libpulse-mainloop-glib
-gio-unix-2.0
-gtk+-3.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0) were not met:
+	as_fn_error $? "Package requirements (libpulse libpulse-mainloop-glib gio-unix-2.0 gio-2.0 dbus-1 glib-2.0 gobject-2.0) were not met:
 
 $RHYTHMBOX_REMOTE_PKG_ERRORS
 
@@ -3786,7 +3759,6 @@ else
 $as_echo "yes" >&6; }
 
 fi
-
 
 ac_config_files="$ac_config_files Makefile src/Makefile"
 

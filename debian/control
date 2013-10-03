@@ -2,7 +2,14 @@ Source: rhythmbox-remote
 Section: misc
 Priority: extra
 Maintainer: 2012-2013 Adam Stark <llamadonica@gmail.com>
-Build-Depends: debhelper (>= 8.0.0), autotools-dev, libglib2.0-dev, libdbus-1-dev, libpulse-dev
+Build-Depends: debhelper (>= 8.0.0), 
+               autotools-dev,
+               libglib2.0-dev,
+               libdbus-1-dev,
+               libpulse-dev,
+               pkg-config,
+               valac (>= 0.16),
+               vala-dbus-binding-tool
 Standards-Version: 3.9.4
 Homepage: 2012-2013 Adam Stark <llamadonica@gmail.com>
 Vcs-Git: https://github.com/llamadonica/rhythmbox-remote.git
