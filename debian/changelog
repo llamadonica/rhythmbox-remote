@@ -1,3 +1,9 @@
+rhythmbox-remote (0.6.1-1~raring1) raring; urgency=low
+
+  * Removed useless dependency on GTK+-3.0
+
+ -- Adam Stark (home) <llamadonica@gmail.com>  Thu, 03 Oct 2013 05:49:08 -0700
+
 rhythmbox-remote (0.6.0-1~raring2) raring; urgency=low
 
   * Fixed packaging dependencies
